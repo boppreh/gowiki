@@ -10,7 +10,7 @@ Features
 --------
 
 - Article titles can contain spaces and unicode characters
-- Links automatically added to mentions in format `[[title]]`
+- When you write `[[title]]` it creates a link automatically
 - Format `[[text]]` makes an absolute link if it's not a valid title
 - Links to inexistent articles go straight to the edit page
 - Edit and view pages are rendered from HTML templates (dir `templates/`)
