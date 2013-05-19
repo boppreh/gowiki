@@ -89,7 +89,9 @@ func renderTemplate(w http.ResponseWriter, tmpl string, p *Page) {
 
 var titleValidator = regexp.MustCompile("^" + titleRegex + "$")
 
-func handleWithPrefix(pattern string, handler func(http.ResponseWriter, *http.Request, string)) {
+type WikiHandler func (w http.ResponseWriter, r *http.Request, title string)
+
+func handleWithPrefix(pattern string, handler WikiHandler) {
 	validator := func(w http.ResponseWriter, r *http.Request) {
 		title := r.URL.Path
 		if titleValidator.MatchString(title) {
