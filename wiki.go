@@ -2,11 +2,12 @@
 package main
 
 import (
-    "fmt"
+	"fmt"
 	"html/template"
 	"io/ioutil"
 	"net/http"
 	"regexp"
+	"strings"
 )
 
 type Page struct {
@@ -24,20 +25,26 @@ An http.ResponseWriter that replaces occurrences of [[Title]] with HTML links
 to that title.
 */
 type LinkedResponseWriter struct {
-    http.ResponseWriter
+	http.ResponseWriter
 }
 
-var titleRegex = "[a-zA-Z0-9 ]+"
-var linkRegex = regexp.MustCompile(`\[\[` + titleRegex + `\]\]`)
+var titleRegex = regexp.MustCompile("^[a-zA-Z0-9 ]+$")
+var linkRegex = regexp.MustCompile(`\[\[([^\]]+)\]\]`)
 
 func (l *LinkedResponseWriter) Write(p []byte) (int, error) {
-    linkReplacer := func(title []byte) []byte {
-        // Remove [[ and ]]
-        strTitle := string(title)[2:len(title)-2]
-        return []byte(fmt.Sprintf(`<a href="/view/%v">%v</a>`,
-                                  strTitle, strTitle))
-    }
-    return l.ResponseWriter.Write(linkRegex.ReplaceAllFunc(p, linkReplacer))
+	linkReplacer := func(match []byte) []byte {
+		// Remove [[ and ]]
+		link := string(match)[2 : len(match)-2]
+		if titleRegex.MatchString(link) {
+			return []byte(fmt.Sprintf(`<a href="/view/%v">%v</a>`, link, link))
+		} else {
+			if !strings.HasPrefix(link, "http") {
+				link = "http://" + link
+			}
+			return []byte(fmt.Sprintf(`<a href="%v">%v</a>`, link, link))
+		}
+	}
+	return l.ResponseWriter.Write(linkRegex.ReplaceAllFunc(p, linkReplacer))
 }
 
 func loadPage(title string) (*Page, error) {
@@ -77,7 +84,7 @@ func saveHandler(w http.ResponseWriter, r *http.Request, title string) {
 }
 
 var templates = template.Must(template.ParseFiles("templates/edit.html",
-                                                  "templates/view.html"))
+	"templates/view.html"))
 
 func renderTemplate(w http.ResponseWriter, tmpl string, p *Page) {
 	err := templates.ExecuteTemplate(w, tmpl+".html", p)
@@ -86,30 +93,28 @@ func renderTemplate(w http.ResponseWriter, tmpl string, p *Page) {
 	}
 }
 
-var titleValidator = regexp.MustCompile("^" + titleRegex + "$")
-
-type WikiHandler func (w http.ResponseWriter, r *http.Request, title string)
+type WikiHandler func(w http.ResponseWriter, r *http.Request, title string)
 
 func handleWithPrefix(pattern string, handler WikiHandler) {
 	validator := func(w http.ResponseWriter, r *http.Request) {
 		title := r.URL.Path
-		if titleValidator.MatchString(title) {
-            handler(w, r, title)
-        } else {
-            // "Not Found" here is actually "Forbidden" without having to give
-            // explanations. Surprisingly, this is the correct usage per
-            // RFC2616.
+		if titleRegex.MatchString(title) {
+			handler(w, r, title)
+		} else {
+			// "Not Found" here is actually "Forbidden" without having to give
+			// explanations. Surprisingly, this is the correct usage per
+			// RFC2616.
 			http.NotFound(w, r)
 		}
 	}
 
-    http.Handle(pattern, http.StripPrefix(pattern, http.HandlerFunc(validator)))
+	http.Handle(pattern, http.StripPrefix(pattern, http.HandlerFunc(validator)))
 }
 
 func main() {
-    handleWithPrefix("/view/", viewHandler)
-    handleWithPrefix("/edit/", editHandler)
-    handleWithPrefix("/save/", saveHandler)
+	handleWithPrefix("/view/", viewHandler)
+	handleWithPrefix("/edit/", editHandler)
+	handleWithPrefix("/save/", saveHandler)
 	http.Handle("/", http.RedirectHandler("/view/FrontPage", http.StatusFound))
 	http.ListenAndServe("localhost:8080", nil)
 }
