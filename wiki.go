@@ -20,7 +20,7 @@ func (p *Page) save() error {
 }
 
 /*
-An http.ResponseWriter that replaces occurences of [[Title]] with HTML links
+An http.ResponseWriter that replaces occurrences of [[Title]] with HTML links
 to that title.
 */
 type LinkedResponseWriter struct {
