@@ -97,6 +97,9 @@ func handleWithPrefix(pattern string, handler WikiHandler) {
 		if titleValidator.MatchString(title) {
             handler(w, r, title)
         } else {
+            // "Not Found" here is actually "Forbidden" without having to give
+            // explanations. Surprisingly, this is the correct usage per
+            // RFC2616.
 			http.NotFound(w, r)
 		}
 	}
