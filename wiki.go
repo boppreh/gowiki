@@ -11,12 +11,12 @@ import (
 
 type Page struct {
 	Title string
-	Body  []byte
+	Body  string
 }
 
 func (p *Page) save() error {
 	filename := "data/" + p.Title + ".txt"
-	return ioutil.WriteFile(filename, p.Body, 0600)
+	return ioutil.WriteFile(filename, []byte(p.Body), 0600)
 }
 
 /*
@@ -42,11 +42,11 @@ func (l *LinkedResponseWriter) Write(p []byte) (int, error) {
 
 func loadPage(title string) (*Page, error) {
 	filename := "data/" + title + ".txt"
-	body, err := ioutil.ReadFile(filename)
+	contents, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return nil, err
 	}
-	return &Page{Title: title, Body: body}, nil
+	return &Page{Title: title, Body: string(contents)}, nil
 }
 
 func viewHandler(w http.ResponseWriter, r *http.Request, title string) {
@@ -68,7 +68,7 @@ func editHandler(w http.ResponseWriter, r *http.Request, title string) {
 
 func saveHandler(w http.ResponseWriter, r *http.Request, title string) {
 	body := r.FormValue("body")
-	p := &Page{Title: title, Body: []byte(body)}
+	p := &Page{Title: title, Body: body}
 	err := p.save()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
