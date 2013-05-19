@@ -2,12 +2,10 @@
 package main
 
 import (
-	"fmt"
 	"html/template"
 	"io/ioutil"
 	"net/http"
 	"regexp"
-	"strings"
 )
 
 type Page struct {
@@ -28,23 +26,15 @@ type LinkedResponseWriter struct {
 	http.ResponseWriter
 }
 
-var titleRegex = regexp.MustCompile("^[a-zA-Z0-9 ]+$")
-var linkRegex = regexp.MustCompile(`\[\[([^\]]+)\]\]`)
+var articleLinkRegex = regexp.MustCompile(`\[\[([\w\s]+)\]\]`)
+var fullLinkRegex = regexp.MustCompile(`\[\[(http.+?)\]\]`)
+var nakedLinkRegex = regexp.MustCompile(`\[\[(.+?)\]\]`)
 
 func (l *LinkedResponseWriter) Write(p []byte) (int, error) {
-	linkReplacer := func(match []byte) []byte {
-		// Remove [[ and ]]
-		link := string(match)[2 : len(match)-2]
-		if titleRegex.MatchString(link) {
-			return []byte(fmt.Sprintf(`<a href="/view/%v">%v</a>`, link, link))
-		} else {
-			if !strings.HasPrefix(link, "http") {
-				link = "http://" + link
-			}
-			return []byte(fmt.Sprintf(`<a href="%v">%v</a>`, link, link))
-		}
-	}
-	return l.ResponseWriter.Write(linkRegex.ReplaceAllFunc(p, linkReplacer))
+    p = articleLinkRegex.ReplaceAll(p, []byte(`<a href="/view/$1">$1</a>`))
+    p = fullLinkRegex.ReplaceAll(p, []byte(`<a href="$1">$1</a>`))
+    p = nakedLinkRegex.ReplaceAll(p, []byte(`<a href="http://$1">$1</a>`))
+	return l.ResponseWriter.Write(p)
 }
 
 func loadPage(title string) (*Page, error) {
@@ -95,6 +85,7 @@ func renderTemplate(w http.ResponseWriter, tmpl string, p *Page) {
 
 type WikiHandler func(w http.ResponseWriter, r *http.Request, title string)
 
+var titleRegex = regexp.MustCompile(`^[\w\s]+$`)
 func handleWithPrefix(pattern string, handler WikiHandler) {
 	validator := func(w http.ResponseWriter, r *http.Request) {
 		title := r.URL.Path

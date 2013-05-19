@@ -1,0 +1,4 @@
+[[Test]]
+[[google.com]]
+[[http://google.com]]
+[[www.google.com]]
