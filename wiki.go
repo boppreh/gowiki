@@ -26,15 +26,16 @@ type LinkedResponseWriter struct {
 	http.ResponseWriter
 }
 
-var articleLinkRegex = regexp.MustCompile(`\[\[([\w\s]+)\]\]`)
 var fullLinkRegex = regexp.MustCompile(`\[\[(http.+?)\]\]`)
+var articleLinkRegex = regexp.MustCompile(`\[\[([^.\]/]+)\]\]`)
 var nakedLinkRegex = regexp.MustCompile(`\[\[(.+?)\]\]`)
 
 func (l *LinkedResponseWriter) Write(p []byte) (int, error) {
-    p = articleLinkRegex.ReplaceAll(p, []byte(`<a href="/view/$1">$1</a>`))
-    p = fullLinkRegex.ReplaceAll(p, []byte(`<a href="$1">$1</a>`))
-    p = nakedLinkRegex.ReplaceAll(p, []byte(`<a href="http://$1">$1</a>`))
-	return l.ResponseWriter.Write(p)
+    text := string(p)
+    text = fullLinkRegex.ReplaceAllString(text, `<a href="$1">$1</a>`)
+    text = articleLinkRegex.ReplaceAllString(text, `<a href="/view/$1">$1</a>`)
+    text = nakedLinkRegex.ReplaceAllString(text, `<a href="http://$1">$1</a>`)
+	return l.ResponseWriter.Write([]byte(text))
 }
 
 func loadPage(title string) (*Page, error) {
@@ -85,7 +86,7 @@ func renderTemplate(w http.ResponseWriter, tmpl string, p *Page) {
 
 type WikiHandler func(w http.ResponseWriter, r *http.Request, title string)
 
-var titleRegex = regexp.MustCompile(`^[\w\s]+$`)
+var titleRegex = regexp.MustCompile(`^[^.\]/]+$`)
 func handleWithPrefix(pattern string, handler WikiHandler) {
 	validator := func(w http.ResponseWriter, r *http.Request) {
 		title := r.URL.Path
