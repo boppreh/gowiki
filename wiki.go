@@ -87,27 +87,25 @@ func renderTemplate(w http.ResponseWriter, tmpl string, p *Page) {
 	}
 }
 
-const lenPath = len("/view/")
-
 var titleValidator = regexp.MustCompile("^" + titleRegex + "$")
 
-func makeHandler(fn func(http.ResponseWriter, *http.Request, string)) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		title := r.URL.Path[lenPath:]
-		if !titleValidator.MatchString(title) {
+func handleWithPrefix(pattern string, handler func(http.ResponseWriter, *http.Request, string)) {
+	validator := func(w http.ResponseWriter, r *http.Request) {
+		title := r.URL.Path
+		if titleValidator.MatchString(title) {
+            handler(w, r, title)
+        } else {
 			http.NotFound(w, r)
-			return
 		}
-		fn(w, r, title)
 	}
+
+    http.Handle(pattern, http.StripPrefix(pattern, http.HandlerFunc(validator)))
 }
 
 func main() {
-	http.HandleFunc("/view/", makeHandler(viewHandler))
-	http.HandleFunc("/edit/", makeHandler(editHandler))
-	http.HandleFunc("/save/", makeHandler(saveHandler))
-	http.HandleFunc("/", func (w http.ResponseWriter, r *http.Request) {
-        http.Redirect(w, r, "/view/FrontPage", http.StatusFound)
-    })
+    handleWithPrefix("/view/", viewHandler)
+    handleWithPrefix("/edit/", editHandler)
+    handleWithPrefix("/save/", saveHandler)
+	http.Handle("/", http.RedirectHandler("/view/FrontPage", http.StatusFound))
 	http.ListenAndServe("localhost:8080", nil)
 }
