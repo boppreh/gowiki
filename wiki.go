@@ -109,5 +109,5 @@ func main() {
 	handleWithPrefix("/edit/", editHandler)
 	handleWithPrefix("/save/", saveHandler)
 	http.Handle("/", http.RedirectHandler("/view/FrontPage", http.StatusFound))
-	http.ListenAndServe("localhost:8080", nil)
+	http.ListenAndServe(":80", nil)
 }
